@@ -3,10 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>CalculatorApp</artifactId>
+    <artifactId>basicCalc</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
-    <name>CalculatorApp</name>
+    <name>basicCalc</name>
     <url>http://maven.apache.org</url>
 
     <properties>
@@ -85,16 +85,10 @@
 
     <!-- Corrected Distribution Management -->
     <distributionManagement>
-        <!-- GitLab Repository -->
-        <repository>
-            <id>gitlab-maven</id>
-            <url>https://gitlab.com/api/v4/projects/67371524/packages/maven</url>
-        </repository>
-
         <!-- JFrog Snapshot Repository -->
         <snapshotRepository>
             <id>jfrog-maven</id>
-            <url>https://trial3j8up4.jfrog.io/artifactory/my-maven-v/</url>
+            <url>https://trial3p0e6v.jfrog.io/artifactory/thrijwal-basicCalc_local/</url>
         </snapshotRepository>
     </distributionManagement>
 
