@@ -30,11 +30,11 @@ pipeline {
                 script {
                     // Run the Docker container with the specific flags in detached mode
                     sh """
-                    docker run -d \
-                        --name jenkins \
+                    docker run -dit \
+                        --name projc \
                         -p 8080:8080 \
                         -p 50000:50000 \
-                        -v /var/jenkins_home:/var/jenkins_home \
+                        -v /var/jenkins_home:/app \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         ${JFROG_REGISTRY}/${JFROG_REPO}
                     """
@@ -47,7 +47,7 @@ pipeline {
                 script {
                     // Run the Maven build inside the running container
                     sh """
-                    docker exec jenkins mvn clean install  # Adjust this as needed for your build
+                    docker exec projc mvn clean install  # Adjust this as needed for your build
                     """
                 }
             }
