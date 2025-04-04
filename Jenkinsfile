@@ -7,6 +7,7 @@ pipeline {
         JFROG_REGISTRY = "trial3p0e6v.jfrog.io"
         JFROG_REPO = "devops-dockervirtual/projc_basiccalc:latest"
         JFROG_CREDENTIALS = "jfrog-credentials"  // The credentials ID created in Jenkins
+        GIT_REPO_URL = "https://github.com/ecs-ProjectC/basicCalc.git" // GitHub repository URL
     }
 
     stages {
@@ -42,12 +43,23 @@ pipeline {
             }
         }
 
+        stage('Checkout GitHub Project Inside Container') {
+            steps {
+                script {
+                    // Checkout the project from GitHub inside the running Docker container
+                    sh """
+                    docker exec projc git clone ${GIT_REPO_URL} /app/basicCalc
+                    """
+                }
+            }
+        }
+
         stage('Run Maven Build Inside Container') {
             steps {
                 script {
-                    // Run the Maven build inside the running container
+                    // Navigate to the project directory inside the container and run Maven build
                     sh """
-                    docker exec projc mvn clean install  # Adjust this as needed for your build
+                    docker exec projc cd /app/basicCalc && mvn clean install
                     """
                 }
             }
@@ -58,6 +70,8 @@ pipeline {
         always {
             // Clean up by stopping the Docker container after the build
             echo "Build, Tests, SonarQube Analysis, and Deployment to GitLab and JFrog succeeded!"
+            //sh "docker stop projc"
+            //sh "docker rm projc"
         }
     }
 }
