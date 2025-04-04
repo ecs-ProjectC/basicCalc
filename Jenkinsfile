@@ -5,7 +5,7 @@ pipeline {
 
     environment {
         JFROG_REGISTRY = "trial3p0e6v.jfrog.io"
-        JFROG_REPO = "devops-dockervirtual/jenkins_custom:latest"
+        JFROG_REPO = "devops-dockervirtual/projc_basiccalc:latest"
         JFROG_CREDENTIALS = "jfrog-credentials"  // The credentials ID created in Jenkins
     }
 
