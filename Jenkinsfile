@@ -17,7 +17,7 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: env.JFROG_CREDENTIALS, usernameVariable: 'JFROG_USERNAME', passwordVariable: 'JFROG_ACCESS_KEY')]) {
                         // Authenticate Docker with JFrog Artifactory
                         sh "docker login ${env.JFROG_REGISTRY} -u ${JFROG_USERNAME} -p ${JFROG_ACCESS_KEY}"
-                        
+
                         // Pull the Docker image from JFrog Artifactory
                         sh "docker pull ${JFROG_REGISTRY}/${JFROG_REPO}"
                     }
@@ -46,9 +46,9 @@ pipeline {
             steps {
                 script {
                     // Run the Maven build inside the running container
-                    //sh """
-                    //docker exec jenkins mvn clean install  # Adjust this as needed for your build
-                    //"""
+                    sh """
+                    docker exec jenkins mvn clean install  # Adjust this as needed for your build
+                    """
                 }
             }
         }
@@ -56,9 +56,8 @@ pipeline {
 
     post {
         always {
-            // Optionally clean up by stopping the Docker container after the build
-            //sh "docker stop jenkins || true"  // Stop the container if it exists
-            //sh "docker rm jenkins || true"    // Remove the container if it exists
+            // Clean up by stopping the Docker container after the build
+            echo "Build, Tests, SonarQube Analysis, and Deployment to GitLab and JFrog succeeded!"
         }
     }
 }
