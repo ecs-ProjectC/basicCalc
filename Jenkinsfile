@@ -92,8 +92,9 @@ pipeline {
         always {
             // Clean up by stopping the Docker container after the build
             echo "Build, Tests, SonarQube Analysis, and Deployment to GitLab and JFrog succeeded!"
-            //sh "docker stop projc"
-            //sh "docker rm projc"
+            sh "docker stop projc"
+            sh "docker rm projc"
+            sh "docker rmi ${JFROG_REGISTRY}/${JFROG_REPO}"
         }
     }
 }
