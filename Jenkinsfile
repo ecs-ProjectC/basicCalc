@@ -43,17 +43,6 @@ pipeline {
             }
         }
 
-        stage('Checkout GitHub Project Inside Container') {
-            steps {
-                script {
-                    // Checkout the project from GitHub inside the running Docker container
-                    sh """
-                    docker exec projc git clone ${GIT_REPO_URL}
-                    """
-                }
-            }
-        }
-
         stage('Run Maven Build Inside Container') {
             steps {
                 script {
