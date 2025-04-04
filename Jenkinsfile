@@ -8,6 +8,10 @@ pipeline {
         JFROG_REPO = "devops-dockervirtual/projc_basiccalc:latest"
         JFROG_CREDENTIALS = "jfrog-credentials"  // The credentials ID created in Jenkins
         GIT_REPO_URL = "https://github.com/ecs-ProjectC/basicCalc.git" // GitHub repository URL
+        SONAR_PROJECT_KEY = "basicCalc"
+        SONAR_ORG = "thrijwal"
+        SONAR_URL = "https://sonarcloud.io"
+        SONAR_LOGIN = "f1388b1bac0c3656a6782c1a1065e3cbc561c59f" // Please use a secure method for handling this in production
     }
 
     stages {
@@ -43,13 +47,42 @@ pipeline {
             }
         }
 
-        stage('Run Maven Build Inside Container') {
+        stage('Run Maven Build') {
             steps {
                 script {
-                    // Navigate to the project directory inside the container and run Maven build
+                    // Run Maven build inside the container (without specifying the project path explicitly)
                     sh """
                     docker exec projc bash -c 'cd basicCalc && mvn clean install'
                     """
+                    echo 'Maven build completed!'
+                }
+            }
+        }
+
+        stage('Run Maven Tests') {
+            steps {
+                script {
+                    // Run Maven tests inside the container
+                    sh """
+                    docker exec projc bash -c 'cd basicCalc && mvn test'
+                    """
+                    echo 'Maven tests completed!'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // Run SonarQube analysis inside the container
+                    sh """
+                    docker exec projc bash -c 'cd basicCalc && mvn clean verify sonar:sonar \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.organization=${SONAR_ORG} \
+                        -Dsonar.host.url=${SONAR_URL} \
+                        -Dsonar.login=${SONAR_LOGIN}'
+                    """
+                    echo 'SonarQube analysis completed!'
                 }
             }
         }
