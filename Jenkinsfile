@@ -10,7 +10,7 @@ pipeline {
     }
 
     stages {
-        stage('Pull Docker Image') {
+        stage('Pull the Docker Image') {
             steps {
                 script {
                     // Use Jenkins' withCredentials to pass the JFrog credentials securely
