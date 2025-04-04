@@ -48,7 +48,7 @@ pipeline {
                 script {
                     // Checkout the project from GitHub inside the running Docker container
                     sh """
-                    docker exec projc git clone ${GIT_REPO_URL} /app/basicCalc
+                    docker exec projc git clone ${GIT_REPO_URL}
                     """
                 }
             }
@@ -59,7 +59,7 @@ pipeline {
                 script {
                     // Navigate to the project directory inside the container and run Maven build
                     sh """
-                    docker exec projc cd /app/basicCalc && mvn clean install
+                    docker exec projc cd /basicCalc && mvn clean install
                     """
                 }
             }
