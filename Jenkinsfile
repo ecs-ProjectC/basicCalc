@@ -48,7 +48,7 @@ pipeline {
                 script {
                     // Navigate to the project directory inside the container and run Maven build
                     sh """
-                    docker exec projc cd basicCalc && mvn clean install
+                    docker exec projc bash -c 'cd basicCalc && mvn clean install'
                     """
                 }
             }
