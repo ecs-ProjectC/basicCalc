@@ -3,6 +3,11 @@ pipeline {
         label 'maven'  // This will run on either Jen_node1 or Jen_node2
     }
 
+    triggers {
+        // Schedule this job to run at 8 PM every day only for the main branch
+        cron('H 20 * * *')  // Runs daily at 8 PM. Use cron syntax (H 20 * * * means 8 PM)
+    }
+
     environment {
         JFROG_REGISTRY = "trial3p0e6v.jfrog.io"
         JFROG_REPO = "devops-dockervirtual/projc_basiccalc:latest"
@@ -15,7 +20,21 @@ pipeline {
     }
 
     stages {
+        stage('Check for Main Branch') {
+            when {
+                branch 'main'  // Only proceed if the branch is 'main'
+            }
+            steps {
+                script {
+                    echo "Running the pipeline for the 'main' branch"
+                }
+            }
+        }
+
         stage('Pull the Docker Image') {
+            when {
+                branch 'main'  // Only proceed if the branch is 'main'
+            }
             steps {
                 script {
                     // Use Jenkins' withCredentials to pass the JFrog credentials securely
@@ -31,6 +50,9 @@ pipeline {
         }
 
         stage('Run Docker Container') {
+            when {
+                branch 'main'  // Only proceed if the branch is 'main'
+            }
             steps {
                 script {
                     // Run the Docker container with the specific flags in detached mode
@@ -48,6 +70,9 @@ pipeline {
         }
 
         stage('Run Maven Build') {
+            when {
+                branch 'main'  // Only proceed if the branch is 'main'
+            }
             steps {
                 script {
                     // Run Maven build inside the container (without specifying the project path explicitly)
@@ -60,6 +85,9 @@ pipeline {
         }
 
         stage('Run Maven Tests') {
+            when {
+                branch 'main'  // Only proceed if the branch is 'main'
+            }
             steps {
                 script {
                     // Run Maven tests inside the container
@@ -72,6 +100,9 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
+            when {
+                branch 'main'  // Only proceed if the branch is 'main'
+            }
             steps {
                 script {
                     // Run SonarQube analysis inside the container
