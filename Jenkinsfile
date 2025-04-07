@@ -5,7 +5,7 @@ pipeline {
 
     triggers {
         // Schedule this job to run at 8 PM every day only for the main branch
-        cron('H 15 * * *')  // Runs daily at 8 PM. Use cron syntax (H 20 * * * means 8 PM)
+        cron('H 20 * * *')  // Runs daily at 8 PM. Use cron syntax (H 20 * * * means 8 PM)
     }
 
     environment {
