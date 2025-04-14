@@ -81,7 +81,7 @@ pipeline {
         stage('Deploy to Production') {
             when {
                 allOf {
-                    expression { env.BRANCH_NAME.startsWith('release/') }
+                    expression { env.BRANCH_NAME.startsWith('release_') }
                     expression { params.DEPLOY_RELEASE == true }
                 }
             }
