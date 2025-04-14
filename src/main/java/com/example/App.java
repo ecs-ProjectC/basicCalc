@@ -1,5 +1,8 @@
 package com.example;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class App {
     public int add(int a, int b) {
         return a + b;

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Basic Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        input, select, button {
+            margin: 5px;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Basic Calculator</h1>
+
+    <label>Number A:</label>
+    <input type="number" id="numA" /><br>
+
+    <label>Number B:</label>
+    <input type="number" id="numB" /><br>
+
+    <label>Operation:</label>
+    <select id="operation">
+        <option value="add">Add</option>
+        <option value="subtract">Subtract</option>
+        <option value="multiply">Multiply</option>
+        <option value="divide">Divide</option>
+    </select><br>
+
+    <button onclick="calculate()">Calculate</button>
+
+    <h2>Result: <span id="result"></span></h2>
+
+    <script>
+        function calculate() {
+            const a = document.getElementById("numA").value;
+            const b = document.getElementById("numB").value;
+            const op = document.getElementById("operation").value;
+
+            fetch(`/api/calc/${op}?a=${a}&b=${b}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Failed: " + res.status);
+                    return res.text();
+                })
+                .then(result => {
+                    document.getElementById("result").innerText = result;
+                })
+                .catch(err => {
+                    document.getElementById("result").innerText = "Error: " + err.message;
+                });
+        }
+    </script>
+</body>
+</html>
