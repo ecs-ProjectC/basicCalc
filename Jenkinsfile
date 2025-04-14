@@ -1,131 +1,131 @@
 pipeline {
-    agent {
-        label 'maven'  // This will run on either Jen_node1 or Jen_node2
-    }
+    agent none  // Define agents per stage for CI/CD separation
 
-    triggers {
-        // Schedule this job to run at 8 PM every day only for the main branch
-        cron('H 20 * * *')  // Runs daily at 8 PM. Use cron syntax (H 20 * * * means 8 PM)
+    parameters {
+        booleanParam(name: 'DEPLOY_RELEASE', defaultValue: false, description: 'Deploy release branch to staging?')
     }
 
     environment {
-        JFROG_REGISTRY = "trial3p0e6v.jfrog.io"
-        JFROG_REPO = "devops-dockervirtual/projc_basiccalc:latest"
-        JFROG_CREDENTIALS = "jfrog-credentials"  // The credentials ID created in Jenkins
-        GIT_REPO_URL = "https://github.com/ecs-ProjectC/basicCalc.git" // GitHub repository URL
-        SONAR_PROJECT_KEY = "basicCalc"
-        SONAR_ORG = "thrijwal"
-        SONAR_URL = "https://sonarcloud.io"
-        SONAR_LOGIN = "f1388b1bac0c3656a6782c1a1065e3cbc561c59f" // Please use a secure method for handling this in production
+        GIT_REPO = 'https://github.com/ecs-ProjectC/basicCalc.git'
+        IMAGE_NAME = 'basiccalc-app'
+        CONTAINER_NAME = 'basiccalc-release-container'
+        APP_PORT = '5000'
     }
 
     stages {
-        stage('Check for Main Branch') {
-            when {
-                branch 'main'  // Only proceed if the branch is 'main'
-            }
+
+        stage('Checkout Code') {
+            agent { label 'maven' }
             steps {
+                checkout scm
                 script {
-                    echo "Running the pipeline for the 'main' branch"
+                    echo " Checked out branch: ${env.BRANCH_NAME} from ${env.GIT_REPO}"
                 }
             }
         }
 
-        stage('Pull the Docker Image') {
-            when {
-                branch 'main'  // Only proceed if the branch is 'main'
-            }
+        stage('Build with Maven') {
+            agent { label 'maven' }
             steps {
-                script {
-                    // Use Jenkins' withCredentials to pass the JFrog credentials securely
-                    withCredentials([usernamePassword(credentialsId: env.JFROG_CREDENTIALS, usernameVariable: 'JFROG_USERNAME', passwordVariable: 'JFROG_ACCESS_KEY')]) {
-                        // Authenticate Docker with JFrog Artifactory
-                        sh "docker login ${env.JFROG_REGISTRY} -u ${JFROG_USERNAME} -p ${JFROG_ACCESS_KEY}"
-
-                        // Pull the Docker image from JFrog Artifactory
-                        sh "docker pull ${JFROG_REGISTRY}/${JFROG_REPO}"
-                    }
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Run Docker Container') {
-            when {
-                branch 'main'  // Only proceed if the branch is 'main'
-            }
+        stage('Run Unit Tests') {
+            agent { label 'maven' }
             steps {
-                script {
-                    // Run the Docker container with the specific flags in detached mode
+                sh 'mvn test'
+            }
+        }
+
+        stage('SonarCloud Analysis') {
+            when {
+                expression {
+                    return env.BRANCH_NAME == 'main' || env.BRANCH_NAME.startsWith('release/')
+                }
+            }
+            agent { label 'maven' }
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     sh """
-                    docker run -dit \
-                        --name projc \
-                        -p 8080:8080 \
-                        -p 50000:50000 \
-                        -v /var/jenkins_home:/app \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        ${JFROG_REGISTRY}/${JFROG_REPO}
+                    mvn sonar:sonar \
+                        -Dsonar.projectKey=basicCalc \
+                        -Dsonar.organization=thrijwal \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=$SONAR_TOKEN
                     """
                 }
             }
         }
 
-        stage('Run Maven Build') {
+        stage('Build Docker Image') {
             when {
-                branch 'main'  // Only proceed if the branch is 'main'
-            }
-            steps {
-                script {
-                    // Run Maven build inside the container (without specifying the project path explicitly)
-                    sh """
-                    docker exec projc bash -c 'cd basicCalc && mvn clean install'
-                    """
-                    echo 'Maven build completed!'
+                expression {
+                    return env.BRANCH_NAME == 'main' || env.BRANCH_NAME.startsWith('release/')
                 }
+            }
+            agent { label 'deployment_server' }
+            steps {
+                sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
             }
         }
 
-        stage('Run Maven Tests') {
+        stage('Deploy Release to Staging') {
             when {
-                branch 'main'  // Only proceed if the branch is 'main'
-            }
-            steps {
-                script {
-                    // Run Maven tests inside the container
-                    sh """
-                    docker exec projc bash -c 'cd basicCalc && mvn test'
-                    """
-                    echo 'Maven tests completed!'
+                allOf {
+                    expression { env.BRANCH_NAME.startsWith('release/') }
+                    expression { params.DEPLOY_RELEASE == true }
                 }
+            }
+            agent { label 'deployment_server' }
+            steps {
+                sh """
+                echo "Deploying release to staging..."
+                docker stop ${CONTAINER_NAME} || true
+                docker rm ${CONTAINER_NAME} || true
+                docker run -dit --name ${CONTAINER_NAME} \
+                    -p ${APP_PORT}:8080 \
+                    -v /home/ubuntu/basicCalc/logs:/app/logs \
+                    ${IMAGE_NAME}:${env.BRANCH_NAME}
+                """
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Deploy to Production') {
             when {
-                branch 'main'  // Only proceed if the branch is 'main'
+                branch 'main'
             }
+            agent { label 'deployment_server' }
             steps {
-                script {
-                    // Run SonarQube analysis inside the container
-                    sh """
-                    docker exec projc bash -c 'cd basicCalc && mvn clean verify sonar:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.organization=${SONAR_ORG} \
-                        -Dsonar.host.url=${SONAR_URL} \
-                        -Dsonar.login=${SONAR_LOGIN}'
-                    """
-                    echo 'SonarQube analysis completed!'
-                }
+                sh """
+                echo " Deploying main branch to production..."
+                docker stop ${CONTAINER_NAME} || true
+                docker rm ${CONTAINER_NAME} || true
+                docker run -dit --name ${CONTAINER_NAME} \
+                    -p ${APP_PORT}:8080 \
+                    -v /home/ubuntu/basicCalc/logs:/app/logs \
+                    ${IMAGE_NAME}:${env.BRANCH_NAME}
+                """
             }
         }
     }
 
     post {
         always {
-            // Clean up by stopping the Docker container after the build
-            echo "Build, Tests, SonarQube Analysis, and Deployment to GitLab and JFrog succeeded!"
-            sh "docker stop projc"
-            sh "docker rm projc"
-            sh "docker rmi ${JFROG_REGISTRY}/${JFROG_REPO}"
+            agent { label 'deployment_server' }
+            steps {
+                echo "Cleaning up unused Docker resources..."
+                sh 'docker container prune -f || true'
+                sh 'docker image prune -f || true'
+            }
+        }
+
+        success {
+            echo " Pipeline completed for branch: ${env.BRANCH_NAME}"
+        }
+
+        failure {
+            echo " Pipeline failed for branch: ${env.BRANCH_NAME}"
         }
     }
 }
