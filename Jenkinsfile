@@ -113,24 +113,25 @@ pipeline {
     }
 
     post {
-        always {
-            script {
-                if (env.NODE_LABELS.contains('maven')) {
+    always {
+        script {
+            node('maven') {
+                if (env.NODE_LABELS?.contains('maven')) {
                     echo " Cleaning up Docker resources on build agent..."
                     sh 'docker container prune -f || true'
                     sh 'docker image prune -f || true'
                 } else {
-                    echo " Skipping Docker cleanup on deployment server (to keep live services running)."
+                    echo " Skipping Docker cleanup — not on build agent."
                 }
             }
         }
+    }
 
-        success {
-            echo " Pipeline completed successfully for branch: ${env.BRANCH_NAME}"
-        }
+    success {
+        echo " Pipeline completed successfully for branch: ${env.BRANCH_NAME}"
+    }
 
-        failure {
-            echo " Pipeline failed for branch: ${env.BRANCH_NAME}"
-        }
+    failure {
+        echo " Pipeline failed for branch: ${env.BRANCH_NAME}"
     }
 }
