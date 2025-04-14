@@ -19,7 +19,7 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    echo "🔁 Checked out branch: ${env.BRANCH_NAME} from ${env.GIT_REPO}"
+                    echo " Checked out branch: ${env.BRANCH_NAME} from ${env.GIT_REPO}"
                 }
             }
         }
@@ -95,7 +95,7 @@ pipeline {
                     echo " Pulling image for release: ${IMAGE_NAME}:${env.BRANCH_NAME}"
                     docker pull ${IMAGE_NAME}:${env.BRANCH_NAME}
 
-                    echo "🚀 Deploying release to staging..."
+                    echo " Deploying release to staging..."
                     docker stop ${CONTAINER_NAME} || true
                     docker rm ${CONTAINER_NAME} || true
                     docker run -dit --name ${CONTAINER_NAME} \
@@ -113,25 +113,26 @@ pipeline {
     }
 
     post {
-    always {
-        script {
-            node('maven') {
-                if (env.NODE_LABELS?.contains('maven')) {
-                    echo " Cleaning up Docker resources on build agent..."
-                    sh 'docker container prune -f || true'
-                    sh 'docker image prune -f || true'
-                } else {
-                    echo " Skipping Docker cleanup — not on build agent."
+        always {
+            script {
+                node('maven') {
+                    if (env.NODE_LABELS?.contains('maven')) {
+                        echo " Cleaning up Docker resources on build agent..."
+                        sh 'docker container prune -f || true'
+                        sh 'docker image prune -f || true'
+                    } else {
+                        echo " Skipping Docker cleanup — not on build agent."
+                    }
                 }
             }
         }
-    }
 
-    success {
-        echo " Pipeline completed successfully for branch: ${env.BRANCH_NAME}"
-    }
+        success {
+            echo " Pipeline completed successfully for branch: ${env.BRANCH_NAME}"
+        }
 
-    failure {
-        echo " Pipeline failed for branch: ${env.BRANCH_NAME}"
+        failure {
+            echo " Pipeline failed for branch: ${env.BRANCH_NAME}"
+        }
     }
 }
