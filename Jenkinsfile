@@ -82,7 +82,6 @@ pipeline {
             when {
                 allOf {
                     expression { env.BRANCH_NAME.startsWith('release_') }
-                    expression { params.DEPLOY_RELEASE == true }
                 }
             }
             agent { label 'deployment_server' }
