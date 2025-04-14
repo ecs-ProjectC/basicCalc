@@ -1,5 +1,5 @@
 pipeline {
-    agent none  // Define agents per stage for CI/CD separation
+    agent none
 
     parameters {
         booleanParam(name: 'DEPLOY_RELEASE', defaultValue: false, description: 'Deploy release branch to staging?')
@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         GIT_REPO = 'https://github.com/ecs-ProjectC/basicCalc.git'
-        IMAGE_NAME = 'basiccalc-app'
+        IMAGE_NAME = 'thrijwaldockerboy/ecs-projc'
         CONTAINER_NAME = 'basiccalc-release-container'
         APP_PORT = '5000'
     }
@@ -19,7 +19,7 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    echo " Checked out branch: ${env.BRANCH_NAME} from ${env.GIT_REPO}"
+                    echo "🔁 Checked out branch: ${env.BRANCH_NAME} from ${env.GIT_REPO}"
                 }
             }
         }
@@ -39,11 +39,6 @@ pipeline {
         }
 
         stage('SonarCloud Analysis') {
-            when {
-                expression {
-                    return env.BRANCH_NAME == 'main' || env.BRANCH_NAME.startsWith('release/')
-                }
-            }
             agent { label 'maven' }
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
@@ -58,19 +53,32 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build & Push Docker Image') {
             when {
                 expression {
                     return env.BRANCH_NAME == 'main' || env.BRANCH_NAME.startsWith('release/')
                 }
             }
-            agent { label 'deployment_server' }
+            agent { label 'maven' }
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                    echo " Building Docker image..."
+                    docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} .
+
+                    echo " Logging into Docker Hub..."
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                    echo " Pushing image to Docker Hub..."
+                    docker push ${IMAGE_NAME}:${env.BRANCH_NAME}
+
+                    docker logout
+                    """
+                }
             }
         }
 
-        stage('Deploy Release to Staging') {
+        stage('Deploy to Production') {
             when {
                 allOf {
                     expression { env.BRANCH_NAME.startsWith('release/') }
@@ -79,49 +87,46 @@ pipeline {
             }
             agent { label 'deployment_server' }
             steps {
-                sh """
-                echo "Deploying release to staging..."
-                docker stop ${CONTAINER_NAME} || true
-                docker rm ${CONTAINER_NAME} || true
-                docker run -dit --name ${CONTAINER_NAME} \
-                    -p ${APP_PORT}:8080 \
-                    -v /home/ubuntu/basicCalc/logs:/app/logs \
-                    ${IMAGE_NAME}:${env.BRANCH_NAME}
-                """
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                    echo " Logging into Docker Hub..."
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                    echo " Pulling image for release: ${IMAGE_NAME}:${env.BRANCH_NAME}"
+                    docker pull ${IMAGE_NAME}:${env.BRANCH_NAME}
+
+                    echo "🚀 Deploying release to staging..."
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
+                    docker run -dit --name ${CONTAINER_NAME} \
+                        -p ${APP_PORT}:8080 \
+                        -v /var/jenkins_home:/app \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        ${IMAGE_NAME}:${env.BRANCH_NAME}
+
+                    docker logout
+                    """
+                }
             }
         }
 
-        stage('Deploy to Production') {
-            when {
-                branch 'main'
-            }
-            agent { label 'deployment_server' }
-            steps {
-                sh """
-                echo " Deploying main branch to production..."
-                docker stop ${CONTAINER_NAME} || true
-                docker rm ${CONTAINER_NAME} || true
-                docker run -dit --name ${CONTAINER_NAME} \
-                    -p ${APP_PORT}:8080 \
-                    -v /home/ubuntu/basicCalc/logs:/app/logs \
-                    ${IMAGE_NAME}:${env.BRANCH_NAME}
-                """
-            }
-        }
     }
 
     post {
         always {
-            agent { label 'deployment_server' }
-            steps {
-                echo "Cleaning up unused Docker resources..."
-                sh 'docker container prune -f || true'
-                sh 'docker image prune -f || true'
+            script {
+                if (env.NODE_LABELS.contains('maven')) {
+                    echo " Cleaning up Docker resources on build agent..."
+                    sh 'docker container prune -f || true'
+                    sh 'docker image prune -f || true'
+                } else {
+                    echo " Skipping Docker cleanup on deployment server (to keep live services running)."
+                }
             }
         }
 
         success {
-            echo " Pipeline completed for branch: ${env.BRANCH_NAME}"
+            echo " Pipeline completed successfully for branch: ${env.BRANCH_NAME}"
         }
 
         failure {
