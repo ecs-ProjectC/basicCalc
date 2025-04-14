@@ -56,7 +56,7 @@ pipeline {
         stage('Build & Push Docker Image') {
             when {
                 expression {
-                    return env.BRANCH_NAME == 'main' || env.BRANCH_NAME.startsWith('release/')
+                    return env.BRANCH_NAME == 'main' || env.BRANCH_NAME.startsWith('release_')
                 }
             }
             agent { label 'maven' }
