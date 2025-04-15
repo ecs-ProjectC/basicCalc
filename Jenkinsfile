@@ -100,7 +100,7 @@ pipeline {
                     docker rm ${CONTAINER_NAME} || true
                     docker run -dit --name ${CONTAINER_NAME} \
                         -p ${APP_PORT}:8080 \
-                        -v /var/jenkins_home:/app \
+                        -v /var/jenkins_home/logs:/app/logs \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         ${IMAGE_NAME}:${env.BRANCH_NAME}
 
@@ -118,8 +118,8 @@ pipeline {
                 node('maven') {
                     if (env.NODE_LABELS?.contains('maven')) {
                         echo " Cleaning up Docker resources on build agent..."
-                       // sh 'docker container prune -f || true'
-                       // sh 'docker image prune -f || true'
+                        sh 'docker container prune -f || true'
+                        sh 'docker image prune -f || true'
                     } else {
                         echo " Skipping Docker cleanup — not on build agent."
                     }
