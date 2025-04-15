@@ -63,6 +63,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh """
+                    ls -lh target/*.jar
                     echo " Building Docker image..."
                     docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} .
 
@@ -117,8 +118,8 @@ pipeline {
                 node('maven') {
                     if (env.NODE_LABELS?.contains('maven')) {
                         echo " Cleaning up Docker resources on build agent..."
-                        sh 'docker container prune -f || true'
-                        sh 'docker image prune -f || true'
+                       // sh 'docker container prune -f || true'
+                       // sh 'docker image prune -f || true'
                     } else {
                         echo " Skipping Docker cleanup — not on build agent."
                     }
